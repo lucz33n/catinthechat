@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cat Chat — Shelter Edition</title>
+  <style>
+    :root{
+      --bg:#0f172a; /* slate-900 */
+      --panel:#111827; /* gray-900 */
+      --text:#e5e7eb; /* gray-200 */
+      --muted:#9ca3af; /* gray-400 */
+      --accent:#f59e0b; /* amber-500 */
+      --accent-2:#22d3ee; /* cyan-400 */
+      --ring:#334155; /* slate-700 */
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font:16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background:var(--bg); color:var(--text);
+      display:flex; align-items:center; justify-content:center; padding:24px;
+    }
+    .app{width:100%; max-width:820px; background:var(--panel); border:1px solid var(--ring); border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.35); overflow:hidden}
+    header{padding:18px 20px; border-bottom:1px solid var(--ring); display:flex; align-items:center; justify-content:space-between}
+    header h1{margin:0; font-size:18px}
+    header .tag{font-size:12px; color:var(--muted)}
+    main{display:grid; grid-template-columns: 1fr; gap:0}
+    @media (min-width: 880px){ main{ grid-template-columns: 280px 1fr; } }
+
+    .sidebar{border-right:1px solid var(--ring); padding:16px}
+    .section-title{font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:6px 0 10px}
+    .cat-list{display:grid; gap:8px}
+    .cat{padding:10px; border:1px solid var(--ring); border-radius:12px; background:#0b1220;}
+    .cat header{display:flex; justify-content:space-between; align-items:center; border:0; padding:0; margin:0 0 6px}
+    .cat .meta{font-size:12px; color:var(--muted)}
+    .cat button{appearance:none; border:1px solid var(--ring); background:#0a0f1d; color:var(--text); padding:6px 10px; border-radius:10px; cursor:pointer}
+    .cat button:hover{border-color:var(--accent); color:var(--accent)}
+
+    .panel{padding:16px}
+    .adopt{display:grid; gap:12px; margin-bottom:12px}
+    .row{display:flex; gap:8px; align-items:center}
+    input[type="text"], input[type="number"]{width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--ring); background:#0b1220; color:var(--text)}
+    input::placeholder{color:var(--muted)}
+    .btn{appearance:none; border:1px solid var(--ring); background:#0a0f1d; color:var(--text); padding:10px 14px; border-radius:12px; cursor:pointer}
+    .btn.primary{border-color:var(--accent); color:#111827; background:var(--accent)}
+    .btn.ghost{color:var(--muted)}
+    .btn:disabled{opacity:.5; cursor:not-allowed}
+
+    .chat{border-top:1px solid var(--ring); padding:0}
+    .messages{height:360px; overflow:auto; padding:14px; display:flex; flex-direction:column; gap:10px; background:#0a0f1d}
+    .msg{max-width:85%; padding:10px 12px; border-radius:12px; border:1px solid var(--ring)}
+    .msg.user{align-self:flex-end; background:#07101f}
+    .msg.cat{align-self:flex-start; background:#0b1526}
+    .msg small{display:block; color:var(--muted); font-size:11px}
+
+    .composer{display:flex; gap:8px; padding:12px; border-top:1px solid var(--ring)}
+    .composer input{flex:1}
+    footer{padding:10px 16px; font-size:12px; color:var(--muted); border-top:1px solid var(--ring)}
+  </style>
+</head>
+<body>
+  <div class="app" role="application">
+    <header>
+      <h1>Cat Chat — Shelter Edition</h1>
+      <span class="tag">Text‑based · Offline · Netlify‑ready</span>
+    </header>
+    <main>
+      <aside class="sidebar" aria-label="Shelter">
+        <div class="section-title">Pick a Cat</div>
+        <div id="catList" class="cat-list" aria-live="polite"></div>
+      </aside>
+
+      <section class="panel">
+        <div class="adopt" id="adoptPanel">
+          <div class="row">
+            <input id="catNumber" type="number" placeholder="Type cat number (e.g., 4)" min="1" />
+            <button class="btn" id="selectBtn">Select</button>
+            <button class="btn ghost" id="randomBtn" title="Pick for me">Random</button>
+          </div>
+          <div class="row">
+            <input id="catName" type="text" placeholder="Optional: name your cat" />
+            <button class="btn primary" id="adoptBtn" disabled>Adopt & Start Chat</button>
+          </div>
+          <small id="adoptInfo" class="muted"></small>
+        </div>
+
+        <div class="chat" id="chat" hidden>
+          <div class="messages" id="messages" aria-live="polite"></div>
+          <div class="composer">
+            <input id="input" type="text" placeholder="Say something… (type 'quit' to leave)" autocomplete="off" />
+            <button class="btn primary" id="sendBtn">Send</button>
+            <button class="btn" id="changeBtn" title="Pick another cat">Change Cat</button>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer>
+      Built with vanilla HTML/CSS/JS. No backend needed. Deploy by dropping this file on Netlify.
+    </footer>
+  </div>
+
+  <script>
+    // ---------------- Data ----------------
+    const cats = [
+      { num: 1, color: "Black", size: "Baby" },
+      { num: 2, color: "Cream", size: "Mama" },
+      { num: 3, color: "Chocolate", size: "Baby" },
+      { num: 4, color: "Gray", size: "Papa" },
+      { num: 5, color: "Orange", size: "Baby" },
+      { num: 6, color: "Light Brown", size: "Mama" },
+    ];
+
+    const responses = [
+      "MEOW MEOW MEOW!",
+      "MEOW!!!!!!!!!!!!!",
+      "meow :3",
+      "mow ;3",
+      "mow mow mow mowwwww mow mow.",
+      "*purrs*",
+    ];
+
+    const keywords = new Map([
+      [["food","treat","snack","catnip"], [
+        "MEOW!!! (YES!!!)",
+        "*stares at food bowl*",
+        "*licks lips*",
+      ]],
+      [["pet","kiss","kisses","hug","snuggle","cuddle"], [
+        "*purrs :3*",
+        "*head boop*",
+        "meow~ <3",
+      ]],
+      [["play","toy"], [
+        "*fetches mouse toy*",
+        "*lays on back*",
+        "*plays with your hand*",
+      ]],
+    ]);
+
+    // ---------------- State ----------------
+    const state = {
+      selected: null, // {num,color,size}
+      name: "Cat",
+    };
+
+    // Persist lightweight state between reloads
+    const save = () => localStorage.setItem("catchat", JSON.stringify(state));
+    const load = () => {
+      try { return JSON.parse(localStorage.getItem("catchat")) || null; }
+      catch { return null; }
+    };
+
+    // ---------------- UI Helpers ----------------
+    const el = (id) => document.getElementById(id);
+    const catList = el("catList");
+    const catNumber = el("catNumber");
+    const catName = el("catName");
+    const selectBtn = el("selectBtn");
+    const adoptBtn = el("adoptBtn");
+    const randomBtn = el("randomBtn");
+    const adoptInfo = el("adoptInfo");
+    const chat = el("chat");
+    const messages = el("messages");
+    const input = el("input");
+    const sendBtn = el("sendBtn");
+    const changeBtn = el("changeBtn");
+
+    function renderCats(){
+      catList.innerHTML = "";
+      cats.forEach(c => {
+        const div = document.createElement("div");
+        div.className = "cat";
+        div.innerHTML = `
+          <header>
+            <strong>#${c.num}</strong>
+            <button data-num="${c.num}">Select</button>
+          </header>
+          <div class="meta">Color: ${c.color} · Size: ${c.size}</div>
+        `;
+        div.querySelector("button").addEventListener("click", () => {
+          catNumber.value = c.num;
+          onSelectNumber();
+        });
+        catList.appendChild(div);
+      });
+    }
+
+    function onSelectNumber(){
+      const n = parseInt(catNumber.value, 10);
+      const found = cats.find(x => x.num === n);
+      if(found){
+        state.selected = found;
+        adoptInfo.textContent = `Selected Cat #${found.num} — ${found.color} ${found.size}`;
+        adoptBtn.disabled = false;
+      } else {
+        state.selected = null;
+        adoptInfo.textContent = "Type a valid cat number from the list.";
+        adoptBtn.disabled = true;
+      }
+    }
+
+    function randomPick(){
+      const pick = cats[Math.floor(Math.random()*cats.length)];
+      catNumber.value = pick.num; onSelectNumber();
+    }
+
+    function system(text){
+      const m = document.createElement("div");
+      m.className = "msg cat";
+      m.innerHTML = `<small>System</small>${text}`;
+      messages.appendChild(m); messages.scrollTop = messages.scrollHeight;
+    }
+    function sayCat(name, text){
+      const m = document.createElement("div");
+      m.className = "msg cat";
+      m.innerHTML = `<small>${name}</small>${text}`;
+      messages.appendChild(m); messages.scrollTop = messages.scrollHeight;
+    }
+    function sayUser(text){
+      const m = document.createElement("div");
+      m.className = "msg user";
+      m.innerHTML = `<small>You</small>${text}`;
+      messages.appendChild(m); messages.scrollTop = messages.scrollHeight;
+    }
+
+    function chooseResponse(userInput){
+      const text = userInput.toLowerCase();
+      for(const [words, replies] of keywords.entries()){
+        if(words.some(w => text.includes(w))){
+          return replies[Math.floor(Math.random()*replies.length)];
+        }
+      }
+      return responses[Math.floor(Math.random()*responses.length)];
+    }
+
+    function startChat(){
+      const stored = load();
+      if(stored && stored.selected){ Object.assign(state, stored); }
+
+      if(state.selected){
+        // resume
+        catName.value = state.name || "Cat";
+        openChat();
+        system(`Welcome back! You are chatting with Cat #${state.selected.num} — ${state.selected.color} ${state.selected.size}.`);
+      } else {
+        // fresh session
+        renderCats();
+      }
+    }
+
+    function openChat(){
+      const givenName = catName.value.trim();
+      state.name = givenName || state.name || "Cat";
+      save();
+      el("adoptPanel").hidden = true; chat.hidden = false; input.focus();
+      system(`You adopted ${state.name}! Cat #${state.selected.num} — ${state.selected.color} ${state.selected.size}. Type 'quit' to leave.`);
+    }
+
+    function reset(){
+      localStorage.removeItem("catchat");
+      state.selected = null; state.name = "Cat";
+      messages.innerHTML = "";
+      el("adoptPanel").hidden = false; chat.hidden = true; adoptBtn.disabled = true; adoptInfo.textContent = ""; catNumber.value = ""; catName.value = "";
+      renderCats();
+    }
+
+    // ---------------- Events ----------------
+    selectBtn.addEventListener("click", onSelectNumber);
+    catNumber.addEventListener("input", onSelectNumber);
+    randomBtn.addEventListener("click", randomPick);
+
+    adoptBtn.addEventListener("click", () => {
+      if(!state.selected) return;
+      openChat();
+      save();
+    });
+
+    changeBtn.addEventListener("click", reset);
+
+    function handleSend(){
+      const text = input.value.trim();
+      if(!text) return;
+      if(text.toLowerCase() === "quit" || text.toLowerCase() === "exit"){ reset(); return; }
+      sayUser(text);
+      const reply = chooseResponse(text);
+      setTimeout(() => sayCat(state.name, reply), 120); // tiny delay for vibes
+      input.value = "";
+    }
+
+    sendBtn.addEventListener("click", handleSend);
+    input.addEventListener("keydown", (e) => { if(e.key === "Enter") handleSend(); });
+
+    // boot
+    renderCats();
+    const stored = load();
+    if(stored && stored.selected){ Object.assign(state, stored); openChat(); system(`Welcome back! You are chatting with Cat #${state.selected.num} — ${state.selected.color} ${state.selected.size}.`); catName.value = state.name; }
+  </script>
+</body>
+</html>
